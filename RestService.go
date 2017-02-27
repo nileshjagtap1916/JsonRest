@@ -14,9 +14,11 @@ limitations under the License.
 package main
 
 import (
+	"bytes"
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io/ioutil"
 	"log"
 	"net/http"
 
@@ -27,11 +29,20 @@ import (
 type SimpleChaincode struct {
 }
 
+type RegistrarJsonRequest struct {
+	EnrollId     string `json:"enrollId"`
+	EnrollSecret string `json:"enrollSecret"`
+}
+
+type RegistrarJsonResponse struct {
+	OK string
+}
+
 // Numverify JSON response structure
-type Numverify struct {
+/*type Numverify struct {
 	CountryName string `json:"object_or_array"`
 	CountryCode string `json:"empty"`
-}
+}*/
 
 func main() {
 	err := shim.Start(new(SimpleChaincode))
@@ -71,7 +82,36 @@ func (t *SimpleChaincode) Invoke(stub shim.ChaincodeStubInterface, function stri
 
 // Query is our entry point for queries
 func (t *SimpleChaincode) Query(stub shim.ChaincodeStubInterface, function string, args []string) ([]byte, error) {
-	fmt.Println("query is running " + function)
+	var JsonResponse RegistrarJsonResponse
+	var JsonRequest RegistrarJsonRequest
+
+	JsonRequest.EnrollId = "jim"
+	JsonRequest.EnrollSecret = "6avZQLwcUe9b"
+
+	jsonAsBytes, _ := json.Marshal(JsonRequest)
+	b := bytes.NewBuffer(jsonAsBytes)
+	req, err := http.NewRequest("POST", "http://127.0.0.1:7050/registrar", b)
+
+	req.Header.Set("Content-Type", "application/json")
+
+	client := &http.Client{}
+	resp, err := client.Do(req)
+	if err != nil {
+		panic(err)
+	}
+
+	outputAsBytes, err := ioutil.ReadAll(resp.Body)
+	resp.Body.Close()
+
+	//var jsonAsString []string
+	err = json.Unmarshal(outputAsBytes, &JsonResponse)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	jsonAsBytes1, _ := json.Marshal(JsonResponse)
+	return jsonAsBytes1, nil
+	/*fmt.Println("query is running " + function)
 	// “Sprintf” formats and returns a string without printing it anywhere.
 	url := fmt.Sprintf("http://validate.jsontest.com/?json={key:value}")
 
@@ -102,7 +142,7 @@ func (t *SimpleChaincode) Query(stub shim.ChaincodeStubInterface, function strin
 
 	fmt.Println("query did not find func: " + function)
 	jsonAsBytes, _ := json.Marshal(record)
-	return jsonAsBytes, nil //errors.New("Received unknown function query: " + record.CountryName)
+	return jsonAsBytes, nil //errors.New("Received unknown function query: " + record.CountryName)*/
 }
 
 // write - invoke function to write key/value pair
